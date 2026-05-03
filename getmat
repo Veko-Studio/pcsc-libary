@@ -1,0 +1,191 @@
+local NotificationLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/IceMinisterq/Notification-Library/Main/Library.lua"))()
+-- Dependencies
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+_G.mouseHitOverride = nil
+_G.matremote = nil
+_G.selectedmat = nil
+
+-- Mouse override system (required)
+local mousemt = getrawmetatable(mouse)
+setreadonly(mousemt, false)
+
+local oldIndex = mousemt.__index
+mousemt.__index = newcclosure(function(self, key)
+    if self == mouse and _G.mouseHitOverride then
+        local obj = _G.mouseHitOverride
+
+        if key == "Hit" then
+            if obj:IsA("Model") then
+                local cf = obj:GetBoundingBox()
+                return cf
+            elseif obj:IsA("BasePart") then
+                return obj.CFrame
+            end
+        end
+
+        if key == "Target" then
+            if obj:IsA("Model") then
+                return obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+            elseif obj:IsA("BasePart") then
+                return obj
+            end
+        end
+
+        if key == "TargetSurface" then
+            return Enum.NormalId.Top
+        end
+    end
+
+    return oldIndex(self, key)
+end)
+
+setreadonly(mousemt, true)
+
+function _G.setMouseHitOverride(obj)
+    _G.mouseHitOverride = obj
+end
+
+-- Utility: move mouse to center
+local camera = workspace.CurrentCamera
+local function moveMouseToCenter()
+    local viewportSize = camera.ViewportSize
+    local centerX = viewportSize.X / 2
+    local centerY = viewportSize.Y / 2
+
+    repeat task.wait() until iswindowactive()
+    mousemoveabs(centerX + math.random(-10,10), centerY + math.random(-10,10))
+end
+
+-- MAIN FUNCTION
+function _G.getmat()
+    -- Hook all RemoteFunctions to detect material remote
+	local orig = {}
+	local buildgui = game:GetService("Players").LocalPlayer.PlayerGui.BuildGUI2
+	for _, des in game.Players.LocalPlayer.PlayerGui:GetDescendants() do
+		if des:IsA("ScreenGui") and des~=buildgui then --not (false
+			--or des:IsDescendantOf(buildgui.Toolbar)
+			--or des:IsDescendantOf(buildgui.BrushMenu)
+			--or des:IsDescendantOf(buildgui.MaterialMenu)
+		--)then
+			table.insert(orig,{des,des.Enabled})
+			des.Enabled = false
+		end
+	end
+	for _, des in game.Players.LocalPlayer.PlayerGui:GetDescendants() do
+		if des:IsA("TextLabel") or des:IsA("Frame") and not (false
+			or des:IsDescendantOf(buildgui.Toolbar) or des==buildgui.Toolbar
+			or des:IsDescendantOf(buildgui.BrushMenu) or des==buildgui.BrushMenu
+			or des:IsDescendantOf(buildgui.MaterialMenu) or des==buildgui.MaterialMenu
+		)then
+			table.insert(orig,{des,des.Visible})
+			des.Visible = false
+		end
+	end
+	for _, des in game.CoreGui:GetDescendants() do
+		if des:IsA("ScreenGui") then
+			table.insert(orig,{des,des.Enabled})
+			des.Enabled = false
+		end
+	end
+	pcall(function()
+		for _, event in ipairs(ReplicatedStorage.Remotes:GetDescendants()) do
+			if event:IsA("RemoteFunction") then
+				local OldInvokeServer
+				OldInvokeServer = hookfunction(event.InvokeServer, newcclosure(function(self, ...)
+					if self == event then
+						local args = {...}
+						local Result = table.pack(OldInvokeServer(self, ...))
+
+						if args[2] ~= nil and args[2] == _G.selectedmat then
+							_G.matremote = event
+							print("Found mat remote:", event.Name)
+						end
+
+						return table.unpack(Result, 1, Result.n)
+					end
+					return OldInvokeServer(self, ...)
+				end))
+			end
+		end
+
+		-- Try to trigger material selection
+		local aircraft = workspace:FindFirstChild("PIayerAircraft")
+		if not aircraft then return end
+
+		local myAircraft = aircraft:FindFirstChild(player.Name)
+		if not myAircraft then NotificationLibrary:SendNotification("Error","getmat failed: not in build mode",10) return end
+
+		for _, block in ipairs(myAircraft:GetChildren()) do
+			if block:IsA("Model") and block.Name == "BlockStd" then
+				local gui = player.PlayerGui
+
+				-- Enable paint tool
+				local button = gui.BuildGUI2.Toolbar.PaintButton
+				if button.Icon.ImageColor3 == Color3.fromRGB(0,125,121) then
+					firesignal(button.MouseButton1Click)
+				end
+
+				task.wait(0.2)
+
+				-- Enable material mode
+				gui.BuildGui.MaterialEvent:Fire(true)
+
+				-- Override mouse target
+				_G.setMouseHitOverride(block)
+				moveMouseToCenter()
+
+				local selectmat = gui.BuildGui.SelectMat
+
+				-- Toggle material
+				if block:FindFirstChild("Material") then
+					origval = block.Material.Value
+					if block.Material.Value == "w" then
+						_G.selectedmat = "f"
+						selectmat:Fire("f")
+					else
+						_G.selectedmat = "w"
+						selectmat:Fire("w")
+					end
+				else
+					_G.selectedmat = "w"
+					selectmat:Fire("w")
+				end
+
+				task.wait(0.1)
+
+				repeat task.wait() until iswindowactive()
+				mouse1click()
+
+				task.wait(0.1)
+
+				if _G.matremote then
+					_G.selectedmat = "origval"
+					selectmat:Fire(origval)
+					task.wait(0.1)
+					repeat task.wait() until iswindowactive()
+					mouse1click()
+					task.wait(0.1)
+					_G.setMouseHitOverride(nil)
+					NotificationLibrary:SendNotification("Info","getmat fetched the paint/material remote",2)
+					return _G.matremote
+				else
+					NotificationLibrary:SendNotification("Error","getmat failed: need a block with changeable material",10)
+				end
+			end
+		end
+
+		_G.setMouseHitOverride(nil)
+	end)
+	for _, playergui in orig do
+		if playergui[1]:IsA("ScreenGui") then
+			playergui[1].Enabled = playergui[2]
+		else
+			playergui[1].Visible = playergui[2]
+		end
+	end
+end
