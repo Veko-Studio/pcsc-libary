@@ -1,2 +1,3 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Veko-Studio/pcsc-libary/refs/heads/main/getmat"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Veko-Studio/pcsc-libary/refs/heads/main/weld"))()
 _G.showdebuglogs = _G.showdebuglogs or true
