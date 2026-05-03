@@ -170,7 +170,7 @@ function _G.getmat()
 					task.wait(0.1)
 					repeat task.wait() until iswindowactive()
 					mouse1click()
-					task.wait(0.1)
+					task.wait(1)
 					_G.setMouseHitOverride(nil)
 					NotificationLibrary:SendNotification("Info","getmat fetched the paint/material remote",2)
 					return _G.matremote
