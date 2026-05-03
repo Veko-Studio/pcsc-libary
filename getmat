@@ -162,7 +162,7 @@ function _G.getmat()
 				repeat task.wait() until iswindowactive()
 				mouse1click()
 
-				task.wait(0.1)
+				task.wait(1)
 
 				if _G.matremote then
 					_G.selectedmat = "origval"
