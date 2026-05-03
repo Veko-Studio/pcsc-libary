@@ -1,0 +1,19 @@
+local NotificationLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/IceMinisterq/Notification-Library/Main/Library.lua"))()
+NotificationLibrary.SendNotification, oldSend = (function(old) return function(self, ...) if _G.showdebuglogs then return old(self, ...) end end end)(NotificationLibrary.SendNotification), NotificationLibrary.SendNotification
+local function weld(part1, part2, offset)
+	local ac = workspace:FindFirstChild(game.Players.LocalPlayer.Name.." Aircraft") or nil
+	if not ac then NotificationLibrary:SendNotification("Error","weld failed: not in drive mode",10) return end
+	if not (part1:IsDescendantOf(ac) and part2:IsDescendantOf(ac)) then NotificationLibrary:SendNotification("Error","weld failed: invalid parts",10) return end
+    offset = offset or part1.CFrame:Inverse() * part2.CFrame
+    local args = {
+        [1] = "WeldConstraint",
+        [2] = part1,
+        [3] = true,
+        [4] = part1,
+        [5] = part2,
+        [6] = offset,
+        [7] = true
+    }
+	NotificationLibrary:SendNotification("Info","weld was done succesfuly",2)
+    game.ReplicatedStorage.BlockRemotes.MotorLock:FireServer(unpack(args))
+end
