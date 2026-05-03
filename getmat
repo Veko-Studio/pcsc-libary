@@ -1,4 +1,5 @@
 local NotificationLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/IceMinisterq/Notification-Library/Main/Library.lua"))()
+NotificationLibrary.SendNotification, oldSend = (function(old) return function(self, ...) if _G.showdebuglogs then return old(self, ...) end end end)(NotificationLibrary.SendNotification), NotificationLibrary.SendNotification
 -- Dependencies
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
